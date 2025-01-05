@@ -155,7 +155,7 @@ export default function Datalogger({
             data={loggedData}
             headers={[
               { label: "Time (s)", key: "time" },
-              { label: "Temperature", key: "temperature" },
+              { label: `Temperature (${unit})`, key: "temperature" },
             ]}
             target="_blank"
           >

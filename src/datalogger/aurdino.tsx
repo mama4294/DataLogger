@@ -62,11 +62,9 @@ const ArduinoComponent = ({
       }
       const sensorValue = parseFloat(value.trim());
       if (!isNaN(sensorValue)) {
-        console.log("Received sensor value:", sensorValue); // Debug log
         const convertedValue = Number(
           convertTemp(sensorValue, unitRef.current).toFixed(2)
         );
-        console.log("Calling debounced function with value:", convertedValue);
         setCurrentTempDebounced(convertedValue);
       } else {
         console.error("Invalid data received:", value);
