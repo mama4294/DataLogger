@@ -121,7 +121,7 @@ export default function Datalogger({
             <SelectItem value="60000">1m</SelectItem>
           </SelectContent>
         </Select>
-        {!isLogging && (
+        {!isLogging && loggedData.length === 0 && (
           <Select
             onValueChange={(unit) => setUnit(unit)}
             defaultValue="°C"
