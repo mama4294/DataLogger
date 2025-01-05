@@ -17,29 +17,15 @@ const ArduinoComponent = ({
 }) => {
   const [, setReader] = useState<TextDecoderStream | null>(null);
   const unitRef = useRef(unit);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
 
   useEffect(() => {
     unitRef.current = unit;
   }, [unit]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const debounce = <T extends any[]>(
-    func: (...args: T) => void,
-    delay: number
-  ): ((...args: T) => void) => {
-    let timeoutId: NodeJS.Timeout | null = null; // Use a ref to store the timeout ID
-    return (...args: T) => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
-  };
-
-  // Use a debounced version of setCurrentTemp
-  const setCurrentTempDebounced = useRef(debounce(setCurrentTemp, 200)).current; // 200mS delay
 
   // Function to request and connect to a serial device
   const connectToSerialPort = async () => {
@@ -76,13 +62,27 @@ const ArduinoComponent = ({
       }
       const sensorValue = parseFloat(value.trim());
       if (!isNaN(sensorValue)) {
-        setCurrentTempDebounced(
-          Number(convertTemp(sensorValue, unitRef.current).toFixed(2))
+        console.log("Received sensor value:", sensorValue); // Debug log
+        const convertedValue = Number(
+          convertTemp(sensorValue, unitRef.current).toFixed(2)
         );
+        console.log("Calling debounced function with value:", convertedValue);
+        setCurrentTempDebounced(convertedValue);
       } else {
         console.error("Invalid data received:", value);
       }
     }
+  };
+
+  // Function to set current temperature with debouncing
+  const setCurrentTempDebounced = (value: number) => {
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
+    const timeout = setTimeout(() => {
+      setCurrentTemp(value);
+    }, 50); //50ms debounce
+    setDebounceTimeout(timeout);
   };
 
   useEffect(() => {
