@@ -112,7 +112,7 @@ export default function Datalogger({
             <SelectValue placeholder="Frequency" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="100">100ms</SelectItem>
+            <SelectItem value="250">250ms</SelectItem>
             <SelectItem value="500">500ms</SelectItem>
             <SelectItem value="1000">1s</SelectItem>
             <SelectItem value="5000">5s</SelectItem>
