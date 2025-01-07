@@ -20,6 +20,7 @@ const ArduinoComponent = ({
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(
     null
   );
+  const currentTempRef = useRef<number | null>(null);
 
   useEffect(() => {
     unitRef.current = unit;
@@ -45,29 +46,114 @@ const ArduinoComponent = ({
 
       // Read the incoming data
       const readerStream = decoder.readable.getReader();
-      readData(readerStream);
+      readTemp(readerStream);
     } catch (err) {
       console.error("Error connecting to serial port:", err);
     }
   };
+
+  const readTemp = async (
+    readerStream: ReadableStreamDefaultReader<string>
+  ) => {
+    let buffer = ""; // Buffer to store incomplete lines
+
+    while (true) {
+      try {
+        const { value, done } = await readerStream.read();
+        if (done) {
+          console.log("Stream closed");
+          break;
+        }
+
+        if (value) {
+          // Add new data to the buffer
+          buffer += value;
+
+          // Split buffer into lines using \r\n as the delimiter
+          const lines = buffer.split("\r\n");
+
+          // Process all complete lines except the last one (it may be incomplete)
+          for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i].trim(); // Remove extra whitespace
+
+            // Parse temperature if the line is valid
+            if (!isNaN(Number(line))) {
+              const temperature = Number(parseFloat(line));
+              setCurrentTemp(temperature);
+            } else {
+              console.warn(`Invalid data: ${line}`);
+            }
+          }
+
+          // Keep the last incomplete line in the buffer
+          buffer = lines[lines.length - 1];
+        }
+      } catch (readError) {
+        console.error("Error reading data:", readError);
+        break;
+      }
+    }
+  };
+
+  // const readTemp = async (
+  //   readerStream: ReadableStreamDefaultReader<string>
+  // ) => {
+  //   // Read the incoming data
+  //   while (true) {
+  //     try {
+  //       const { value, done } = await readerStream.read();
+  //       console.log("Value: " + value);
+  //       if (done) {
+  //         console.log("Stream closed");
+  //         break;
+  //       }
+
+  //       if (value) {
+  //         const temperature = parseFloat(value);
+  //         setCurrentTemp(temperature);
+  //         console.log(`Temperature data received: ${temperature}`);
+  //       }
+  //     } catch (readError) {
+  //       console.error("Error reading data:", readError);
+  //       break;
+  //     }
+  //   }
+  // };
 
   // Function to read incoming data from the serial port
   const readData = async (
     readerStream: ReadableStreamDefaultReader<string>
   ) => {
     while (true) {
-      const { value, done } = await readerStream.read();
-      if (done) {
-        break;
-      }
-      const sensorValue = parseFloat(value.trim());
-      if (!isNaN(sensorValue)) {
-        const convertedValue = Number(
-          convertTemp(sensorValue, unitRef.current).toFixed(2)
-        );
-        setCurrentTempDebounced(convertedValue);
-      } else {
-        console.error("Invalid data received:", value);
+      try {
+        const { value, done } = await readerStream.read();
+        if (done) break;
+
+        const trimmedValue = value?.trim() || "";
+
+        // Ensure the value is valid and non-blank
+        if (!trimmedValue || isNaN(Number(trimmedValue))) {
+          console.error("Invalid or blank data received:", value);
+          continue; // Ignore invalid or blank data
+        }
+
+        const sensorValue = parseFloat(trimmedValue);
+
+        // Prevent updating state if the value is the same as the current value
+        if (sensorValue === currentTempRef.current) {
+          continue; // Ignore redundant updates
+        }
+
+        // Prevent invalid updates (e.g., non-numeric or blank values)
+        if (sensorValue > 0) {
+          const convertedValue = Number(
+            convertTemp(sensorValue, unitRef.current).toFixed(2)
+          );
+          currentTempRef.current = convertedValue;
+          setCurrentTemp(convertedValue);
+        }
+      } catch (err) {
+        console.error("Error reading data:", err);
       }
     }
   };
