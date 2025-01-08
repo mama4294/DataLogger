@@ -17,10 +17,6 @@ const ArduinoComponent = ({
 }) => {
   const [, setReader] = useState<TextDecoderStream | null>(null);
   const unitRef = useRef(unit);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(
-    null
-  );
-  const currentTempRef = useRef<number | null>(null);
 
   useEffect(() => {
     unitRef.current = unit;
@@ -79,7 +75,7 @@ const ArduinoComponent = ({
             // Parse temperature if the line is valid
             if (!isNaN(Number(line))) {
               const temperature = Number(parseFloat(line));
-              setCurrentTemp(temperature);
+              setCurrentTemp(convertTemp(temperature, unitRef.current));
             } else {
               console.warn(`Invalid data: ${line}`);
             }
@@ -93,80 +89,6 @@ const ArduinoComponent = ({
         break;
       }
     }
-  };
-
-  // const readTemp = async (
-  //   readerStream: ReadableStreamDefaultReader<string>
-  // ) => {
-  //   // Read the incoming data
-  //   while (true) {
-  //     try {
-  //       const { value, done } = await readerStream.read();
-  //       console.log("Value: " + value);
-  //       if (done) {
-  //         console.log("Stream closed");
-  //         break;
-  //       }
-
-  //       if (value) {
-  //         const temperature = parseFloat(value);
-  //         setCurrentTemp(temperature);
-  //         console.log(`Temperature data received: ${temperature}`);
-  //       }
-  //     } catch (readError) {
-  //       console.error("Error reading data:", readError);
-  //       break;
-  //     }
-  //   }
-  // };
-
-  // Function to read incoming data from the serial port
-  const readData = async (
-    readerStream: ReadableStreamDefaultReader<string>
-  ) => {
-    while (true) {
-      try {
-        const { value, done } = await readerStream.read();
-        if (done) break;
-
-        const trimmedValue = value?.trim() || "";
-
-        // Ensure the value is valid and non-blank
-        if (!trimmedValue || isNaN(Number(trimmedValue))) {
-          console.error("Invalid or blank data received:", value);
-          continue; // Ignore invalid or blank data
-        }
-
-        const sensorValue = parseFloat(trimmedValue);
-
-        // Prevent updating state if the value is the same as the current value
-        if (sensorValue === currentTempRef.current) {
-          continue; // Ignore redundant updates
-        }
-
-        // Prevent invalid updates (e.g., non-numeric or blank values)
-        if (sensorValue > 0) {
-          const convertedValue = Number(
-            convertTemp(sensorValue, unitRef.current).toFixed(2)
-          );
-          currentTempRef.current = convertedValue;
-          setCurrentTemp(convertedValue);
-        }
-      } catch (err) {
-        console.error("Error reading data:", err);
-      }
-    }
-  };
-
-  // Function to set current temperature with debouncing
-  const setCurrentTempDebounced = (value: number) => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
-    }
-    const timeout = setTimeout(() => {
-      setCurrentTemp(value);
-    }, 50); //50ms debounce
-    setDebounceTimeout(timeout);
   };
 
   useEffect(() => {
